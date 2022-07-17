@@ -1,0 +1,222 @@
+#include <events/mbed_events.h>
+#include "mbed.h"
+#include "ESP32.h"
+#include "BLE.h"
+#include "Gap.h"
+#include "BLE_Tests/BleTests.h"
+
+DigitalOut led1(LED1);
+DigitalOut wifi_pwr(ESP_PWR);
+DigitalOut wifi_en (ESP_EN);
+DigitalOut boot(ESP_BOOT);
+DigitalOut WDT(uWDI);
+
+
+const static char DEVICE_NAME[] = "BLE TEST";
+ 
+static events::EventQueue event_queue(/* event count */ 16 * EVENTS_EVENT_SIZE);
+ 
+class BleTestDemo : ble::Gap::EventHandler {
+public:
+    BleTestDemo(BLE &ble, events::EventQueue &event_queue) :
+        _ble(ble),
+        _event_queue(event_queue),
+        _bletest_uuid(GattService::UUID_BATTERY_SERVICE),
+        _testVal(50),
+        _bletest_service(ble, _testVal),
+        _adv_data_builder(_adv_buffer) { }
+ 
+    void start() {
+        _ble.gap().setEventHandler(this);
+ 
+        _ble.init(this, &BleTestDemo::on_init_complete);
+ 
+        _event_queue.call_every(500, this, &BleTestDemo::blink);
+        _event_queue.call_every(1000, this, &BleTestDemo::update_sensor_value);
+ 
+        _event_queue.dispatch_forever();
+    }
+ 
+private:
+    /** Callback triggered when the ble initialization process has finished */
+    void on_init_complete(BLE::InitializationCompleteCallbackContext *params) {
+        if (params->error != BLE_ERROR_NONE) {
+            printf("Ble initialization failed.");
+            return;
+        }
+ 
+        start_advertising();
+    }
+ 
+    void start_advertising() {
+        /* Create advertising parameters and payload */
+ 
+        ble::AdvertisingParameters adv_parameters(
+            ble::advertising_type_t::CONNECTABLE_UNDIRECTED,
+            ble::adv_interval_t(ble::millisecond_t(1000))
+        );
+ 
+        _adv_data_builder.setFlags();
+        _adv_data_builder.setLocalServiceList(mbed::make_Span(&_bletest_uuid, 1));
+        _adv_data_builder.setName(DEVICE_NAME);
+ 
+        /* Setup advertising */
+ 
+        ble_error_t error = _ble.gap().setAdvertisingParameters(
+            ble::LEGACY_ADVERTISING_HANDLE,
+            adv_parameters
+        );
+ 
+        if (error) {
+            printf("_ble.gap().setAdvertisingParameters() failed");
+            return;
+        }
+ 
+        error = _ble.gap().setAdvertisingPayload(
+            ble::LEGACY_ADVERTISING_HANDLE,
+            _adv_data_builder.getAdvertisingData()
+        );
+ 
+        if (error) {
+            printf("_ble.gap().setAdvertisingPayload() failed");
+            return;
+        }
+ 
+        /* Start advertising */
+ 
+        error = _ble.gap().startAdvertising(ble::LEGACY_ADVERTISING_HANDLE);
+ 
+        if (error) {
+            printf("_ble.gap().startAdvertising() failed");
+            return;
+        }
+    }
+ 
+    void update_sensor_value() {
+        //if (_ble.gap()) {
+            _testVal++;
+            if (_testVal > 100) {
+                _testVal = 20;
+            }
+ 
+            _bletest_service.updateTestVal(_testVal);
+        //}
+    }
+ 
+    void blink(void) {
+        led1 = !led1;
+    }
+ 
+private:
+    /* Event handler */
+ 
+    void onDisconnectionComplete(const ble::DisconnectionCompleteEvent&) {
+        _ble.gap().startAdvertising(ble::LEGACY_ADVERTISING_HANDLE);
+    }
+ 
+private:
+    BLE &_ble;
+    events::EventQueue &_event_queue;
+ 
+    UUID _bletest_uuid;
+ 
+    uint8_t _testVal;
+    BleTests _bletest_service;
+ 
+    uint8_t _adv_buffer[ble::LEGACY_ADVERTISING_MAX_SIZE];
+    ble::AdvertisingDataBuilder _adv_data_builder;
+};
+ 
+/** Schedule processing of events from the BLE middleware in the event queue. */
+void schedule_ble_events(BLE::OnEventsToProcessCallbackContext *context) {
+    event_queue.call(Callback<void()>(&context->ble, &BLE::processEvents));
+}
+
+int main (void)
+{
+    boot = 1;
+    wifi_en = 1;
+    wifi_pwr = 1;
+   // TCPSocket *_socket = new TCPSocket();
+    //UDPSocket *sock = new UDPSocket();
+
+    NetworkInterface *net = NetworkInterface::get_default_instance();
+    // sock->set_blocking(true);
+
+     int result = net->connect();
+    // //int ret = _socket->open(net);
+    // int res = sock->open(net);
+    // char buf[50] = {0};
+    const char *hostname = "192.168.1.63";
+    //const char *data = "Hello from Client\n";
+    // SocketAddress socketAddress(hostname, 8080);
+    // //int ret = _socket->connect(socketAddress);
+    // res = sock->connect(socketAddress);
+
+    ESP32 esp(ESP_EN, NC, ESP_TX, ESP_RX, true, ESP_RTS, ESP_CTS, 115200);
+    
+    //_socket->recvfrom(&socketAddress,buf, 5);
+    //printf("Connecting to network!\n");
+    
+    
+
+    // if (result != 0) {
+    // // printf("Error! net->connect() returned: %d\n", result);
+    //     int n  = result;
+    //     for(int i = 0; i < 10; i++)
+    //     {
+            
+    //         led1 = !led1;
+    //         ThisThread::sleep_for(50);
+    //     }
+    //  }
+    //int n  = result;
+
+    const char *ap = "CXNK003C0E77";
+    const char *password = "123456789";
+
+    const char * random_addr = "11:22:33:44:55";
+    const char * data = "Hello World from MicroRaptor!!!";
+
+    // esp.connect(ap, password);
+    esp.open("TCP", 1, hostname, 8080, 0);
+    // esp.send(1, data, 18);
+
+    // ESP32::advertising_param_t advParam;
+    // advParam.adv_int_min = 0x0020;
+    // advParam.adv_int_max = 0x0040;
+    // advParam.adv_type = ADV_TYPE_SCAN_IND;
+    // advParam.own_addr_type = BLE_ADDR_TYPE_RANDOM;
+    // advParam.channel_map = 0x01;
+    // advParam.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY;
+   
+
+    
+
+    BLE &ble = BLE::Instance();
+    // esp.ble_set_role(INIT_SERVER_ROLE);
+    // esp.ble_set_addr(1, (const uint8_t *)random_addr);
+    // esp.ble_set_device_name("Raymond_BLE_Test");
+    // esp.ble
+
+
+    // esp.ble_set_advertising_param(&advParam);
+    // esp.ble_set_advertising_data((const uint8_t *)data, 31);
+    // esp.ble_start_advertising();
+    
+
+    //BLE &ble = BLE::Instance();
+    ble.onEventsToProcess(schedule_ble_events);
+ 
+    BleTestDemo demo(ble, event_queue);
+    demo.start();
+
+    while(true)
+    {
+        //_socket->sendto(socketAddress, data, 18);
+        //sock->sendto(socketAddress, data, 18);
+        led1 = !led1;
+        WDT = !WDT;
+        ThisThread::sleep_for(100);
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "target_overrides": {
+        "*": {
+
+            "platform.stdio-baud-rate": 115200,
+            
+            "target.network-default-interface-type": "WIFI",
+
+            "target.components_add": ["ESP32"],
+            "target.features_add"    : ["BLE"],
+            "target.extra_labels_add": ["ESP32AT_BLE"],
+            
+            "esp32.provide-default" : true,
+            "esp32.wifi-tx" : "ESP_TX",
+            "esp32.wifi-rx" : "ESP_RX",
+            "esp32.wifi-rts" : "ESP_RTS",
+            "esp32.wifi-cts" : "ESP_CTS",
+            "esp32.wifi-en" : "ESP_EN",
+            "esp32.wifi-baudrate" : "115200",
+            "esp32.wifi-debug" : true,
+
+            "nsapi.default-wifi-security": "WPA_WPA2",
+            "nsapi.default-wifi-ssid": "\"CXNK003C0E77\"",
+            "nsapi.default-wifi-password": "\"123456789\"",
+
+            "nsapi.default-cellular-sim-pin": null,
+            "nsapi.default-cellular-plmn": null,
+            "nsapi.default-cellular-apn": "\"internet\"",
+            "nsapi.default-cellular-username": "\"\"",
+            "nsapi.default-cellular-password": "\"\""
+
+           
+        }
+    }
+}
